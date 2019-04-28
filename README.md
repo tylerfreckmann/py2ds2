@@ -12,10 +12,10 @@ Python package to create a SAS DS2 scoring package.
 
 ```py
 import py2ds2
-py2ds2.create_package(path-to-python-scoring-file,
-                      path-to-ds2-scoring-file,
-                      path-to-inputVars-file,
-                      path-to-outputVars-file)
+py2ds2.create_package(path_to_python_scoring_file,
+                      path_to_ds2_scoring_file,
+                      path_to_inputVars_file,
+                      path_to_outputVars_file)
 ```
 
 `create_package` will write a SAS DS2 scoring package file the location you provide. The `inputVars` and `outputVars` files must match SAS Model Manager syntax:
@@ -23,9 +23,9 @@ py2ds2.create_package(path-to-python-scoring-file,
 ```json
 [
 	{
-		'name': 'varname',
-		'type': 'decimal' or 'character',
-		'role': 'input' or 'output'
+		"name": "varname",
+		"type": "decimal" or "character",
+		"role": "input" or "output"
 	}
 ]
 ```
