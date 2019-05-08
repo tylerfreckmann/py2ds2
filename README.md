@@ -1,6 +1,6 @@
 # py2ds2
 
-Python package to create a SAS DS2 scoring package.
+Python package to create a SAS DS2 scoring package from a pickled scikit-learn pipeline.
 
 ## Installation
 
@@ -12,20 +12,11 @@ Python package to create a SAS DS2 scoring package.
 
 ```py
 import py2ds2
-py2ds2.create_package(path_to_python_scoring_file,
-                      path_to_ds2_scoring_file,
-                      path_to_inputVars_file,
-                      path_to_outputVars_file)
+py2ds2.create_from_pickle(pickle_filename, X, model_function='CLASSIFICATION')
 ```
 
-`create_package` will write a SAS DS2 scoring package file the location you provide. The `inputVars` and `outputVars` files must match SAS Model Manager syntax:
+Creates a SAS DS2 scoring package from a Python pickle file.
 
-```json
-[
-	{
-		"name": "varname",
-		"type": "decimal" or "character",
-		"role": "input" or "output"
-	}
-]
-```
+The pickle file should be a sci-kit learn pipeline that was fit on the pandas DataFrame `X`.
+A python scoring file, a SAS DS2 scoring file that wraps the python scoring file,
+and input/output variable info files are all created from the pickled scikit-learn pipeline.

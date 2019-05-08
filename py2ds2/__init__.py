@@ -1,6 +1,6 @@
 import json
 
-def create_package(py_filename, ds2_filename, inputs=None, outputs=None):
+def py2ds2(py_filename, ds2_filename, inputs=None, outputs=None):
 
     if inputs != None:
         with open(inputs, 'r') as input_file:
@@ -94,3 +94,74 @@ def create_package(py_filename, ds2_filename, inputs=None, outputs=None):
             ds2_file.write("        end;\n")
             ds2_file.write("    end;\n")
             ds2_file.write("endpackage;\n")
+
+def create_from_pickle(pickle_filename, X, model_function,
+                       py_score_filename="score.py",
+                       ds2_filename="score.sas",
+                       inputVar_filename="inputVar.json",
+                       outputVar_filename="outputVar.json"):
+    '''
+    Creates a SAS DS2 scoring package from a Python pickle file
+
+    The pickle file should be a sci-kit learn pipeline that was fit on the pandas DataFrame X.
+    A python scoring file (py_score_filename), a SAS DS2 scoring file that wraps the python scoring file (ds2_filename),
+    and input and output variable files (inputVar.json, outputVar.json) are all created from the pickle file.
+
+    Parameters
+    ---------
+    pickle_filename : string
+        Specifies the path to the pickle file
+    X : :class:`pandas.DataFrame`
+        Specifies the pandas DataFrame that the sci-kit learn pipeline was fit on
+    model_function : string
+        Specifies the model function
+        Valid Values: CLASSIFICATION, REGRESSION
+    py_score_filename : string
+        Specifies the path to the python scoring file that will be created
+    ds2_filename : string
+        Specifies the path to the SAS DS2 file that will be created
+    inputVar_filename : string
+        Specifies the path to the inputVar.json file that will be created
+    outputVar_filename : string
+        Specifies the path to the outputVar.json file that will be created
+
+    '''
+    inputs = list(X.dtypes.index)
+    input_params = str(inputs).strip("[]").replace("'", "")
+    input_df = str([f"'{name}': {name}" for name in inputs]).strip("[]").replace('"', '')
+    input_json = []
+    for n, t in zip(inputs, list(X.dtypes)):
+        v = {}
+        v['name'] = n
+        v['type'] = 'decimal' if t.kind in 'iufcmM' else 'character'
+        v['role'] = 'input'
+        input_json.append(v)
+    with open(inputVar_filename, 'w') as inputVar_file:
+        json.dump(input_json, inputVar_file)
+    if model_function == 'CLASSIFICATION':
+        output = "EM_EVENTPROBABILITY"
+    elif model_function == 'REGRESSION':
+        output = "EM_PREDICTION"
+    else:
+        raise ValueError("model_function must be 'CLASSIFICATION' or 'REGRESSION'")
+    output_json = [{'name': output, 'type': 'decimal', 'role': 'output'}]
+    with open(outputVar_filename, 'w') as outputVar_file:
+        json.dump(output_json, outputVar_file)
+
+    with open(py_score_filename, 'w') as py_file:
+        py_file.write("from sklearn.externals import joblib\n")
+        py_file.write("import pandas as pd\n")
+        py_file.write("\n")
+        py_file.write(f"ml_pipe = joblib.load('{pickle_filename}')\n")
+        py_file.write("\n")
+        py_file.write(f"def score({input_params}):\n")
+        py_file.write(f"    'Output: {output}'\n")
+        py_file.write(f"    data = pd.DataFrame([{{{input_df}}}])\n")
+        if model_function == 'CLASSIFICATION':
+            py_file.write("    _, EM_EVENTPROBABILITY = ml_pipe.predict_proba(data)[0]\n")
+            py_file.write("    return float(EM_EVENTPROBABILITY)\n")
+        else:
+            py_file.write("    EM_PREDICTION = ml_pipe.predict(data)[0]\n")
+            py_file.write("    return float(EM_PREDICTION)\n")
+
+    py2ds2(py_score_filename, ds2_filename, inputs=inputVar_filename, outputs=outputVar_filename)
